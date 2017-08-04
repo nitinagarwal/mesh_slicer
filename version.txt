@@ -1,0 +1,6 @@
+# This file should contain the current version number of mesh_slicer
+# World.Major.Minor
+# Minor indicates a small change
+# Major indicates a large change or large number of changes (upload to website)
+# World indicates a substantial change or release
+1.0.0
