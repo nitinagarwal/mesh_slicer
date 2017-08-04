@@ -72,7 +72,7 @@ Eigen::Vector3d new_normal;
 Eigen::Vector3d rot_axis;
 GLfloat rot_angle = 0.0f; 
 int num_slices = 0;
-double dis_slices = 25.0;
+double dis_slices = 100.0;
 double plane_xcord = 0; // default transations
 double plane_ycord = 0;
 double plane_zcord = 0; 
@@ -102,9 +102,6 @@ bool draw_plane = false;
 bool draw_contour = false;
 bool allow_cursor_movement = false;
 
-//int atlas_rows;
-//int atlas_cols;
-
 /* for input mesh */
 struct Vertex {
     glm::vec3 Position;    // Position
@@ -131,188 +128,11 @@ bool point_onPlane(Eigen::Vector3d &vec1,Eigen::Vector3d &nomPL, Eigen::Vector3d
 bool plane_triangleIntersect(Eigen::Vector3d &vec1, Eigen::Vector3d &vec2, Eigen::Vector3d &vec3, Eigen::Vector3d &nomPL, Eigen::Vector3d &ptPL);
 std::vector<Eigen::Vector3d> plane_edgeIntersect(Eigen::Vector3d &vec1, Eigen::Vector3d &vec2, Eigen::Vector3d &vec3, Eigen::Vector3d &nomPL, Eigen::Vector3d &ptPL);
 void compute_intersection(Eigen::MatrixXd &mesh_ver, Eigen::MatrixXi &mesh_fac, Eigen::MatrixXd &mesh_col, Eigen::Vector3d &normal_PL, Eigen::Vector3d &point_PL);
+void writePLY(std::vector<Eigen::RowVector3d> VERTICES, std::vector<Eigen::RowVector3d> COLOR, std::vector<Eigen::RowVector2d> EDGES,std::string directory);
+std::vector<Eigen::Vector3d> rayBB_intersection(Eigen::Vector3d &min_BB, Eigen::Vector3d &max_BB, Eigen::Vector3d &ray_direction);
 void updatePlane();
+void updatePoints(std::vector<Eigen::RowVector3d> &outputVertices, Eigen::Vector4d &size);
 void updateBuffer();
-
-
-void writePLY(std::vector<Eigen::RowVector3d> VERTICES, std::vector<Eigen::RowVector3d> COLOR, std::vector<Eigen::RowVector2d> EDGES,std::string directory){
-
-    FILE * PLYfile = fopen(directory.c_str(),"w");
-
-    fprintf(PLYfile, "ply\n");
-    fprintf(PLYfile, "format ascii 1.0\n");
-    fprintf(PLYfile, "element vertex %d\n", (int)VERTICES.size());
-    fprintf(PLYfile, "property float x\n");
-    fprintf(PLYfile, "property float y\n");
-    fprintf(PLYfile, "property float z\n");
-    fprintf(PLYfile, "property uchar red\n");
-    fprintf(PLYfile, "property uchar green\n");
-    fprintf(PLYfile, "property uchar blue\n");
-    fprintf(PLYfile, "element faces %d\n", (int)EDGES.size());
-    fprintf(PLYfile, "property list uchar int vertex_indices\n");
-    fprintf(PLYfile, "end_header\n");
-
-    for(int i=0; i<VERTICES.size();i++){
-
-        fprintf(PLYfile, "%.3f %.3f %.3f %3.0f %3.0f %3.0f\n",VERTICES.at(i)(0), VERTICES.at(i)(1), VERTICES.at(i)(2),COLOR.at(i)(0)*255,COLOR.at(i)(1)*255,COLOR.at(i)(2)*255);
-    }
-    for(int i=0; i<EDGES.size();i++){
-
-        fprintf(PLYfile, "2 %d %d\n",(int)EDGES.at(i)(0),(int)EDGES.at(i)(1));
-    }
-    fclose(PLYfile);
-}
-
-void updatePoints(std::vector<Eigen::RowVector3d> &outputVertices, Eigen::Vector4d &size){
-    /* rotating the points to make them align to z axis */
-
-    double diff_deg = acos(Eigen::RowVector3d(0,0,1).dot(new_normal));  // align to z axis
-    Eigen::RowVector3d axis = new_normal.cross(Eigen::RowVector3d(0,0,1));
-
-    cout << "axis of rotation is " << axis << endl;
-    cout << "value is " << diff_deg << endl;
-
-    Eigen::MatrixXd inputV,outputV;
-    Eigen::Matrix<double,4,4> T;
-    Eigen::Matrix<double,4,4> R;
-    T.setIdentity();
-
-    inputV.resize(outputVertices.size(),4);
-    outputV.resize(outputVertices.size(),4);
-
-    for(int i=0; i<outputVertices.size(); i++){ // convert to eigen matrix imp to find the centroid
-        inputV.row(i) << outputVertices.at(i)(0), outputVertices.at(i)(1), outputVertices.at(i)(2), 1;
-    }
-
-    Eigen::Vector4d max_contour = inputV.colwise().maxCoeff();
-    Eigen::Vector4d min_contour = inputV.colwise().minCoeff();
-    Eigen::Vector4d centroid = (min_contour-max_contour)/2; 
-
-    T.col(3) << centroid(0), centroid(1), centroid(2), 1; 
-
-    Quaternion Q(axis,diff_deg);
-    R = Q.Quat_to_Rotmatrix();
-
-    outputV = T * R * T.inverse() * inputV.transpose();
-
-    /* translate so that all vertices are +ve with some buffer*/
-    min_contour = outputV.rowwise().minCoeff();
-    T.col(3) << -min_contour(0)+50, -min_contour(1)+50, -min_contour(2)+50, 1;
-
-    outputV = T * outputV;
-    outputV.transposeInPlace();
-    
-    Eigen::RowVector3d newvertices;
-    
-    for(int i=0; i<outputVertices.size(); i++){
-        
-        newvertices << outputV(i,0), outputV(i,1), outputV(i,2);
-        outputVertices.at(i) = newvertices; 
-    }
-
-    /* to get the size of the final image */
-    size = outputV.colwise().maxCoeff();
-}
-
-
-/* bool insideTriangle(Eigen::Vector3d &vertex1, Eigen::Vector3d &vertex2, Eigen::Vector3d &vertex3, Eigen::Vector3d &point){ */
-
-/*     Eigen::Matrix3d A; */
-/*     Eigen::Vector3d B; */
-/*     Eigen::Vector3d ans; */
-
-/*     A << (vertex2(0)-vertex1(0)), (vertex3(0)-vertex1(0)), vertex1(0), */
-/*       (vertex2(1)-vertex1(1)), (vertex3(1)-vertex1(1)), vertex1(1), */
-/*       (vertex2(2)-vertex1(2)), (vertex3(2)-vertex1(2)), vertex1(2); */
-
-/*     B << point(0), point(1), point(2) ; // x,y,z */
-
-/*     ans = A.colPivHouseholderQr().solve(B);  // solving linear equations */
-
-/*     cout << "s u vector is " << ans << endl; */
-
-/*     if(ans(1)>=0 && ans(2)>=0 && ans(3)==1 && (ans(1)+ans(2)) <=1){ */
-/*         return true; */
-/*     }else{ */
-/*         return false; */
-/*     } */
-/* } */
-
-
-std::vector<Eigen::Vector3d> rayBB_intersection(Eigen::Vector3d &min_BB, Eigen::Vector3d &max_BB, Eigen::Vector3d &ray_direction){
-
-    std::vector <Eigen::Vector3d> BB_intersects;
-    Eigen::Vector3d temp;
-
-    if (abs(ray_direction.dot(Eigen::Vector3d(1,0,0))) == 1){ // direction parallel to x axis
-
-        BB_intersects.push_back(min_BB);
-
-        temp << max_BB(0),min_BB(1), min_BB(2);
-        BB_intersects.push_back(temp);
-
-    }else if(abs(ray_direction.dot(Eigen::Vector3d(0,1,0))) == 1){ // direction parallel to y axis
-
-        BB_intersects.push_back(min_BB);
-
-        temp << min_BB(0),max_BB(1), min_BB(2);
-        BB_intersects.push_back(temp);
-
-    }else if(abs(ray_direction.dot(Eigen::Vector3d(0,0,1))) == 1){ // direction parallel to z axis 
-
-        BB_intersects.push_back(min_BB);
-
-        temp << min_BB(0),min_BB(1), max_BB(2);
-        BB_intersects.push_back(temp);
-    }else{
-        /* cout << " intersection angle not parallel to any aaxis" << endl; */
-
-        double r;
-        double r1 = 1000000.0;
-        Eigen::Vector3d ray_pt1;
-        ray_pt1 = min_BB + ray_direction;  // new pt in same direction
-
-        if( (Eigen::Vector3d(1,0,0).dot(ray_pt1-min_BB)) != 0 ){
-
-            /* r =(Eigen::Vector3d(1,0,0).dot(min_BB-ray_pt)) / (Eigen::Vector3d(1,0,0).dot(ray_pt1-ray_pt)); */
-            r =(Eigen::Vector3d(1,0,0).dot(max_BB-min_BB)) / (Eigen::Vector3d(1,0,0).dot(ray_pt1-min_BB));
-            /* cout << "r value  " << r << endl; */
-            if( r1 > r ){
-                r1 = r;
-            }
-        }
-
-        if( (Eigen::Vector3d(0,1,0).dot(ray_pt1-min_BB)) != 0 ){
-
-            /* r =(Eigen::Vector3d(0,1,0).dot(min_BB-ray_pt)) / (Eigen::Vector3d(0,1,0).dot(ray_pt1-ray_pt)); */
-            r =(Eigen::Vector3d(0,1,0).dot(max_BB-min_BB)) / (Eigen::Vector3d(0,1,0).dot(ray_pt1-min_BB));
-            /* cout << "r value  " << r << endl; */
-
-            if( r1 > r ){
-                r1 = r;
-            }
-        }
-
-        if( (Eigen::Vector3d(0,0,1).dot(ray_pt1-min_BB)) != 0 ){
-
-            /* r =(Eigen::Vector3d(0,0,1).dot(min_BB-ray_pt)) / (Eigen::Vector3d(0,0,1).dot(ray_pt1-ray_pt)); */
-            r =(Eigen::Vector3d(0,0,1).dot(max_BB-min_BB)) / (Eigen::Vector3d(0,0,1).dot(ray_pt1-min_BB));
-            /* cout << "r value  " << r << endl; */
-
-            if( r1 > r ){
-                r1 = r;
-            }
-        }
-
-        BB_intersects.push_back(min_BB);  
-        BB_intersects.push_back(min_BB + r1*ray_direction);  
-        /* BB_intersects.push_back(ray_pt - abs(r1)*ray_direction);  //ensuring that smaller value goes first */
-        /* BB_intersects.push_back(ray_pt + abs(r1)*ray_direction); */
-    }
-
-    return BB_intersects;
-}
-
 
 
 int main(int argc, char ** argv){
@@ -370,7 +190,6 @@ int main(int argc, char ** argv){
             vertex.vertexColor = vec;
         }else{
 
-            /* vertex.vertexColor = glm::vec3(1.0f, 0.8627f, 0.0f ); // yellow color mesh */
             vertex.vertexColor = glm::vec3(1.0f, 0.0f, 1.0f ); // magenta color mesh
         }
         vertices.push_back(vertex);
@@ -429,7 +248,7 @@ int main(int argc, char ** argv){
     glGetError(); // pull and ignore unhandled errors like GL_INVALID_ENUM
 #endif
 
-    /* tell GLFW to capture our mouse */
+    /* capture mouse */
     /* glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED); */
 
     /* ------------------Nano Gui Setting---------------------------------------------------------------- */
@@ -452,7 +271,7 @@ int main(int argc, char ** argv){
     gui->addVariable("Position (zcord)", plane_zcord)->setSpinnable(true);
     /* gui->addVariable("Offset", plane_offset)->setSpinnable(true); */
     gui->addVariable("# of Slices", num_slices)->setTooltip("Number of slices. Either specify the number of slices or the interslice distance."); 
-    gui->addVariable("Inter-Slice Distance", dis_slices)->setTooltip("Interslice Distance. Either specify the interslice distance or the number of slics.");
+    gui->addVariable("Inter-Slice Distance", dis_slices)->setTooltip("Interslice Distance in um. Either specify the interslice distance or the number of slics.");
 
 
     gui->addGroup("Output");
@@ -491,8 +310,6 @@ int main(int argc, char ** argv){
             BB_min = inputV1.colwise().minCoeff();
             BB_max = inputV1.colwise().maxCoeff();
 
-            /* image_size = ceil(sqrt( pow(BB_max(2)-BB_min(2),2) + pow(BB_max(0)-BB_min(0),2) + pow(BB_max(1)-BB_min(1),2) )); // length of the diag of BB */
-
             BB_min = BB_min.array() + 5;   //slightly shrinking the bounding box to allow intersection 
             BB_max = BB_max.array() - 5;
             std::vector<Eigen::Vector3d> intersectPts;
@@ -502,11 +319,8 @@ int main(int argc, char ** argv){
 
             intersectDistance = sqrt( pow(intersectPts.at(0)(0)-intersectPts.at(1)(0),2) + pow(intersectPts.at(0)(1)-intersectPts.at(1)(1),2) + pow(intersectPts.at(0)(2)-intersectPts.at(1)(2),2) );  // distance
 
-            cout << "intersecting points on BB are " << intersectPts.at(0) << " " << intersectPts.at(1)<< endl;
-            cout << "intersecting distance is   " << intersectDistance << endl; 
-
             if(num_slices ==0){
-                inter_sliceDist = dis_slices;
+                inter_sliceDist = dis_slices/4;              // the ratio 100um -> 25um
                 number_slices = intersectDistance / inter_sliceDist;
             }else{
                 number_slices = num_slices;
@@ -516,13 +330,12 @@ int main(int argc, char ** argv){
             if(contour){
                 cout << "Generating contours----" << endl;
             }else{
-                cout << "Generating image-----" << endl;
+                cout << "Generating images-----" << endl;
             }
 
             for(int i=0; i<number_slices; i++){    // generating the contours or images
 
                 new_point = intersectPts.at(0) + (i*inter_sliceDist)*new_normal;
-                cout << "point on the plane is  " << new_point << endl;
                 compute_intersection(inputV1, inputF1, inputC1, new_normal,new_point);     // slice the mesh
 
                 if(outputVertices.size()>0){ // there might be no vertices at all from the intersection
@@ -536,8 +349,6 @@ int main(int argc, char ** argv){
 
                         Eigen::Vector4d sz;
                         updatePoints(outputVertices,sz);  // aligning the vertices to z axis for writing to bmp
-                        cout << "img size is" << ceil(sz(0)) << " " << ceil(sz(1)) << endl;
-                        // check size
                         WriteBMP(ceil(sz(0))+50, ceil(sz(1))+50, outputVertices, outputColor, outputEdges, storage_pathname + "/" + std::to_string(i+1)+".bmp");
                     }
 
@@ -564,36 +375,30 @@ int main(int argc, char ** argv){
             PT << temp_plane[0], temp_plane[1], temp_plane[2]; // take any point on the plane
             PT = ((PT.array()+1)*(max_value-min_value))/2 + min_value; // renormalize
 
-            cout << "point on the plane is  " << PT << endl;
-
             // slice the mesh
             compute_intersection(inputV1, inputF1, inputC1, new_normal,PT); 
-
-            cout << "outputVertices size" << outputVertices.size() << endl;
-            cout << "outputColor size" << outputColor.size() << endl;
 
             /* Walk through each of the contour's vertices */
             for(GLuint i = 0; i < outputVertices.size(); i++)
             {
-                Vertex v1;
-                glm::vec3 v2;
-                // Positions --- Normalize each vertex
-                v2.x = 2 * (( outputVertices.at(i)(0) - min_value)/(max_value-min_value)) -1;
-                v2.y = 2 * (( outputVertices.at(i)(1) - min_value)/(max_value-min_value)) -1;
-                v2.z = 2 * (( outputVertices.at(i)(2)  - min_value)/(max_value-min_value)) -1;
-                v1.Position = v2;
+            Vertex v1;
+            glm::vec3 v2;
+            // Positions --- Normalize each vertex
+            v2.x = 2 * (( outputVertices.at(i)(0) - min_value)/(max_value-min_value)) -1;
+            v2.y = 2 * (( outputVertices.at(i)(1) - min_value)/(max_value-min_value)) -1;
+            v2.z = 2 * (( outputVertices.at(i)(2)  - min_value)/(max_value-min_value)) -1;
+            v1.Position = v2;
 
-                if( color == true ){
-                    // VertexColor
-                    v2.x = outputColor.at(i)(0);
-                    v2.y = outputColor.at(i)(1);
-                    v2.z = outputColor.at(i)(2);
-                    v1.vertexColor = v2;
-                }else{
-                    /* v1.vertexColor = glm::vec3(1.0f, 0.8627f, 0.0f ); // yellow color mesh */
-                    v1.vertexColor = glm::vec3(1.0f, 0.0f, 1.0f ); // magenta color mesh
-                }
-                slices.push_back(v1);
+            if( color == true ){
+                // VertexColor
+                v2.x = outputColor.at(i)(0);
+                v2.y = outputColor.at(i)(1);
+                v2.z = outputColor.at(i)(2);
+                v1.vertexColor = v2;
+            }else{
+                v1.vertexColor = glm::vec3(1.0f, 0.0f, 1.0f ); // magenta color mesh
+            }
+            slices.push_back(v1);
             } 
 
             updateBuffer();
@@ -621,7 +426,6 @@ int main(int argc, char ** argv){
 
     /* ------------------Call back Functions---------------------------------------------------------------- */
 
-    /* registers callback functions */
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
     glfwSetCursorPosCallback(window, glfw_cursor_callback);
@@ -641,12 +445,10 @@ int main(int argc, char ** argv){
 
     /* ------------------------------Init VAO, VBO, EBO----------------------------------------------------- */
 
-    /* unsigned int VBO[2], VAO[2], EBO[2]; */
     glGenVertexArrays(3, VAO);
     glGenBuffers(3, VBO);
     glGenBuffers(2, EBO);
 
-    /* bind the Vertex Array Object first, then bind and set vertex buffer(s), and then configure verte attributes(s). */
     glBindVertexArray(VAO[0]);
 
     glBindBuffer(GL_ARRAY_BUFFER, VBO[0]);
@@ -663,11 +465,7 @@ int main(int argc, char ** argv){
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid*)offsetof(Vertex,vertexColor));
     glEnableVertexAttribArray(1);
 
-    /* glBindBuffer with 0 means we are unbinding it. This is ok since VBO is already registered with VAO. */
     glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-    /* This is not correct. Do not unbind EBO. EBO is not registered hence keep it bound */ 
-    /* glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0); */
 
     /* Unbinding VAO so that other VAO can be initialized */
     glBindVertexArray(0); 
@@ -686,17 +484,15 @@ int main(int argc, char ** argv){
     glVertexAttribPointer(0, 3, GL_DOUBLE, GL_FALSE, 3 * sizeof(double), (GLvoid*)0);
     glEnableVertexAttribArray(0);
 
-    /* glBindBuffer with 0 means we are unbinding it. This is ok since VBO is already registered with VAO. */
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-    /* Unbinding VAO so that other VAO can be initialized */
     glBindVertexArray(0); 
 
     old_normal << normal_x, normal_y, normal_z; 
     rot_axis = old_normal;
+
     /* ------------------------------Game Loop-------------------------------------------------------------- */
     while (!glfwWindowShouldClose(window)) {
-        /* This is where all rendering happen */
 
         /* Getting the time for camera movement */
         float currentFrame = glfwGetTime();
@@ -725,15 +521,11 @@ int main(int argc, char ** argv){
         }
 
         /* Camera View and Model Transformation */
-        // calculate the model matrix for each object and pass it to shader before drawing
-        // model is first rotated and then translated. IMP::coding in reverse
         glm::mat4 view;
         view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
 
         glm::mat4 model(1.0f); // not changing the model
         model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f));
-        /* model = glm::scale(model, glm::vec3(1.2f, 1.2f, 1.2f)); */	
-        /* model = glm::rotate(model, glm::radians(-90.0f), glm::vec3(0.0f, 1.0f, 0.0f)); */
 
         glm::mat4 projection;
         projection = glm::perspective(glm::radians(fov), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 10.0f);
@@ -745,7 +537,6 @@ int main(int argc, char ** argv){
             ContourShader.setMat4("model", model);
             ContourShader.setMat4("projection", projection);
 
-            /* Binding which VAO to use. Different object/mesh have different VAOs, */
             glBindVertexArray(VAO[2]);
             glDrawArrays(GL_POINTS,0, slices.size());
             glBindVertexArray(0);
@@ -763,7 +554,7 @@ int main(int argc, char ** argv){
 
             glBindVertexArray(VAO[1]);
             glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-            glBindVertexArray(0);        /* Unbinding the VAO so that other VAO can be used for other objects */
+            glBindVertexArray(0);        // unbinding 
         }
 
         if(draw_mesh){
@@ -773,8 +564,6 @@ int main(int argc, char ** argv){
             ourProgram.setMat4("model", model);
             ourProgram.setMat4("projection", projection);
 
-            /* glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); */
-            /* Binding which VAO to use. Different object/mesh have different VAOs, */
             glBindVertexArray(VAO[0]);
             glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
             glBindVertexArray(0);
@@ -793,8 +582,7 @@ int main(int argc, char ** argv){
             glPolygonOffset(-1,-1);
             glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
             glDisable(GL_POLYGON_OFFSET_LINE);
-            /* glPolygonMode(GL_FRONT_AND_BACK, GL_FILL); */
-            glBindVertexArray(0);        /* Unbinding the VAO so that other VAO can be used for other objects */
+            glBindVertexArray(0);        
         }
 
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -841,72 +629,24 @@ void updatePlane(){
 
     Eigen::Matrix<double, 4, 4> Tran; 
     Eigen::Matrix<double, 4, 4> Tran2; 
-    Eigen::Matrix<double, 4, 4> Rx; 
-    Eigen::Matrix<double, 4, 4> Ry; 
-    Eigen::Matrix<double, 4, 4> Rz; 
     Eigen::Matrix<double, 4, 4> R; 
 
     Tran.setIdentity(4,4);
-    Rx.setIdentity(4,4);
-    Ry.setIdentity(4,4);
-    Rz.setIdentity(4,4);
     R.setIdentity(4,4);
     Tran2.setIdentity(4,4);
 
     Quaternion quat_plane(rot_axis, rot_angle);
     R = quat_plane.Quat_to_Rotmatrix();
 
-    /* double deg = rot_angle; */
-
-    /* if (abs(rot_axis.dot(Eigen::Vector3d(1,0,0))) == 1){ // rotation bt x axis */
-
-    /*     R.col(1) << 0, cos(deg), sin(deg),  0; */
-    /*     R.col(2) << 0, -sin(deg), cos(deg),  0; */
-    /* }else if(abs(rot_axis.dot(Eigen::Vector3d(0,1,0))) == 1){ // rotation bt y axis */
-
-    /*     R.col(0) << cos(deg), 0, sin(deg), 0; */
-    /*     R.col(2) << -sin(deg), 0, cos(deg),  0; */
-    /* }else if(abs(rot_axis.dot(Eigen::Vector3d(0,0,1))) == 1){ */
-
-    /*     R.col(0) << cos(deg), sin(deg), 0, 0; */
-    /*     R.col(1) << -sin(deg), cos(deg), 0, 0; */
-    /* }else{ */
-
-    /*     double d = sqrt(pow(rot_axis(1),2) + pow(rot_axis(2),2)); */
-    /*     Rx.col(1) << 0, rot_axis(2)/d, rot_axis(1)/d, 0; */
-    /*     Rx.col(2) << 0, -rot_axis(1)/d, rot_axis(2)/d, 0; */
-
-    /*     Ry.col(0) << d, 0, rot_axis(0),0; */
-    /*     Ry.col(2) << -rot_axis(0), 0, d, 0; */
-
-    /*     Rz.col(0) << cos(deg),sin(deg),0,0; */
-    /*     Rz.col(1) << -sin(deg),cos(deg),0,0; */
-
-    /*     /1* cout << "random rotation" << endl; *1/ */
-    /*     R = Rx.inverse()*Ry.inverse()*Rz*Ry*Rx; */
-    /* } */
-
     double xcenter = (PL(0,0) + PL(3,0))/2;
     double ycenter = (PL(0,1) + PL(3,1))/2;
     double zcenter = (PL(0,2) + PL(3,2))/2;
 
     Tran.col(3) << xcenter, ycenter, zcenter, 1;
-    
     Tran2.col(3) << plane_xcord, plane_ycord, plane_zcord;
-    /* Tran.col(3) << -(xcenter+plane_xcord), -(ycenter+plane_ycord), -(zcenter+plane_zcord), 1; */
 
     pt_plane = Tran2 * Tran *  R  * Tran.inverse() * PL.transpose();
-        
-    /* pt_plane = Tran.inverse() *  R * Tran * Tran2 * PL.transpose(); */
     pt_plane.transposeInPlace();
-
-    /* cout << "original Plane" << endl; */
-    /* cout << PL << endl; */
-    /* cout << "rotation angle " << deg << endl; */
-    /* cout << " rotation axis " << rot_axis << endl; */
-    /* cout << "trans 2 " << Tran2 << endl; */
-    /* cout << " tran " << Tran << endl; */
-    /* cout << " modified plane " << pt_plane << endl; */
 
     /* update the plane */
     temp_plane[0] = pt_plane(0,0); 
@@ -1058,6 +798,148 @@ bool point_onPlane(Eigen::Vector3d &vec1,Eigen::Vector3d &nomPL, Eigen::Vector3d
     }
 }
 
+void updatePoints(std::vector<Eigen::RowVector3d> &outputVertices, Eigen::Vector4d &size){
+    /* rotating the points to make them align to z axis */
+
+    double diff_deg = acos(Eigen::RowVector3d(0,0,1).dot(new_normal));  // align to z axis
+    Eigen::RowVector3d axis = new_normal.cross(Eigen::RowVector3d(0,0,1));
+
+    Eigen::MatrixXd inputV,outputV;
+    Eigen::Matrix<double,4,4> T;
+    Eigen::Matrix<double,4,4> R;
+    T.setIdentity();
+
+    inputV.resize(outputVertices.size(),4);
+    outputV.resize(outputVertices.size(),4);
+
+    for(int i=0; i<outputVertices.size(); i++){ // convert to eigen matrix useful to find the centroid
+        inputV.row(i) << outputVertices.at(i)(0), outputVertices.at(i)(1), outputVertices.at(i)(2), 1;
+    }
+
+    Eigen::Vector4d max_contour = inputV.colwise().maxCoeff();
+    Eigen::Vector4d min_contour = inputV.colwise().minCoeff();
+    Eigen::Vector4d centroid = (min_contour-max_contour)/2; 
+
+    T.col(3) << centroid(0), centroid(1), centroid(2), 1; 
+
+    Quaternion Q(axis,diff_deg);
+    R = Q.Quat_to_Rotmatrix();
+
+    outputV = T * R * T.inverse() * inputV.transpose();
+
+    /* translate so that all vertices are +ve with some buffer*/
+    min_contour = outputV.rowwise().minCoeff();
+    T.col(3) << -min_contour(0)+50, -min_contour(1)+50, -min_contour(2)+50, 1;
+
+    outputV = T * outputV;
+    outputV.transposeInPlace();
+
+    Eigen::RowVector3d newvertices;
+
+    for(int i=0; i<outputVertices.size(); i++){
+
+        newvertices << outputV(i,0), outputV(i,1), outputV(i,2);
+        outputVertices.at(i) = newvertices; 
+    }
+
+    /* to get the size of the final image */
+    size = outputV.colwise().maxCoeff();
+}
+
+
+std::vector<Eigen::Vector3d> rayBB_intersection(Eigen::Vector3d &min_BB, Eigen::Vector3d &max_BB, Eigen::Vector3d &ray_direction){
+    /* copmuting the intersection of the new normal with the BB */
+
+    std::vector <Eigen::Vector3d> BB_intersects;
+    Eigen::Vector3d temp;
+
+    if (abs(ray_direction.dot(Eigen::Vector3d(1,0,0))) == 1){ // direction parallel to x axis
+
+        BB_intersects.push_back(min_BB);
+
+        temp << max_BB(0),min_BB(1), min_BB(2);
+        BB_intersects.push_back(temp);
+
+    }else if(abs(ray_direction.dot(Eigen::Vector3d(0,1,0))) == 1){ // direction parallel to y axis
+
+        BB_intersects.push_back(min_BB);
+
+        temp << min_BB(0),max_BB(1), min_BB(2);
+        BB_intersects.push_back(temp);
+
+    }else if(abs(ray_direction.dot(Eigen::Vector3d(0,0,1))) == 1){ // direction parallel to z axis 
+
+        BB_intersects.push_back(min_BB);
+
+        temp << min_BB(0),min_BB(1), max_BB(2);
+        BB_intersects.push_back(temp);
+    }else{
+
+        double r;
+        double r1 = 1000000.0;
+        Eigen::Vector3d ray_pt1;
+        ray_pt1 = min_BB + ray_direction;  // new pt in same direction
+
+        if( (Eigen::Vector3d(1,0,0).dot(ray_pt1-min_BB)) != 0 ){
+
+            r =(Eigen::Vector3d(1,0,0).dot(max_BB-min_BB)) / (Eigen::Vector3d(1,0,0).dot(ray_pt1-min_BB));
+            if( r1 > r ){
+                r1 = r;
+            }
+        }
+
+        if( (Eigen::Vector3d(0,1,0).dot(ray_pt1-min_BB)) != 0 ){
+
+            r =(Eigen::Vector3d(0,1,0).dot(max_BB-min_BB)) / (Eigen::Vector3d(0,1,0).dot(ray_pt1-min_BB));
+
+            if( r1 > r ){
+                r1 = r;
+            }
+        }
+
+        if( (Eigen::Vector3d(0,0,1).dot(ray_pt1-min_BB)) != 0 ){
+
+            r =(Eigen::Vector3d(0,0,1).dot(max_BB-min_BB)) / (Eigen::Vector3d(0,0,1).dot(ray_pt1-min_BB));
+
+            if( r1 > r ){
+                r1 = r;
+            }
+        }
+        BB_intersects.push_back(min_BB);  
+        BB_intersects.push_back(min_BB + r1*ray_direction);  
+    }
+    return BB_intersects;
+}
+
+
+void writePLY(std::vector<Eigen::RowVector3d> VERTICES, std::vector<Eigen::RowVector3d> COLOR, std::vector<Eigen::RowVector2d> EDGES,std::string directory){
+
+    FILE * PLYfile = fopen(directory.c_str(),"w");
+
+    fprintf(PLYfile, "ply\n");
+    fprintf(PLYfile, "format ascii 1.0\n");
+    fprintf(PLYfile, "element vertex %d\n", (int)VERTICES.size());
+    fprintf(PLYfile, "property float x\n");
+    fprintf(PLYfile, "property float y\n");
+    fprintf(PLYfile, "property float z\n");
+    fprintf(PLYfile, "property uchar red\n");
+    fprintf(PLYfile, "property uchar green\n");
+    fprintf(PLYfile, "property uchar blue\n");
+    fprintf(PLYfile, "element faces %d\n", (int)EDGES.size());
+    fprintf(PLYfile, "property list uchar int vertex_indices\n");
+    fprintf(PLYfile, "end_header\n");
+
+    for(int i=0; i<VERTICES.size();i++){
+
+        fprintf(PLYfile, "%.3f %.3f %.3f %3.0f %3.0f %3.0f\n",VERTICES.at(i)(0), VERTICES.at(i)(1), VERTICES.at(i)(2),COLOR.at(i)(0)*255,COLOR.at(i)(1)*255,COLOR.at(i)(2)*255);
+    }
+    for(int i=0; i<EDGES.size();i++){
+
+        fprintf(PLYfile, "2 %d %d\n",(int)EDGES.at(i)(0),(int)EDGES.at(i)(1));
+    }
+    fclose(PLYfile);
+}
+
 void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, int mode)
 {
     float cameraSpeed = 2.5 * deltaTime; 
@@ -1164,11 +1046,23 @@ void glfw_char_callback(GLFWwindow* window, unsigned int codepoint)
                 draw_plane = !draw_plane;
                 break;
             }
-        case 'L':
-        case 'l':
+        case 'M':
+        case 'm':
             {
                 draw_wire = !draw_wire;
                 break;
+            }
+        case 'H':
+        case 'h':
+            {
+                cout << " ======================= HELP MENU ===========================" << endl;
+                cout << " M/m : Overlay Mesh  " << endl;
+                cout << " P/p : Show the Slicing Plane " << endl;
+                cout << " Esc : Quit Application " << endl;
+                cout << " W/S/A/D : Move front, back, left & right " << endl;
+                cout << " Mouse_Right_Click : Change Camera Angle " << endl;
+                cout << " Mouse_Left_Click : Stop Camera Movement " << endl;
+                cout << " ======================= HELP MENU ===========================" << endl;
             }
         default:
             break;
