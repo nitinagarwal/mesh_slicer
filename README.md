@@ -40,21 +40,13 @@ where:
 
 1. The orientation of the cutting plane is given by its normal vector in x, y and z coordinates.
 2. The position of the cutting plane is given by the position of its center in x, y, z coordinates.
-3. The user can specify either the number of slices they want or they can specifiy the inter-slice distance (same units as the input mesh).
+3. The user can specify either the number of slices they want or the inter-slice distance (same units as the input mesh).
 4. To assist the user in visualizing what output files would be generated, they can slice the mesh in the UI to see
 an example section. After which they can reload the mesh to slice at a different orientation. 
 5. The output after slicing could either be a [.PLY](http://paulbourke.net/dataformats/ply/) file with vertices of the contour or rasterized section images in bmp format.
 6. If the vertices of the input mesh do not have color, by default they will be assinged an RGB color of [255,0,255]
 
-
-
-
-
-
-
-
-
-
+To know more about mesh slicer press `h`.
 
 
 ## License

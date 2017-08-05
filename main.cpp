@@ -271,7 +271,7 @@ int main(int argc, char ** argv){
     gui->addVariable("Position (zcord)", plane_zcord)->setSpinnable(true);
     /* gui->addVariable("Offset", plane_offset)->setSpinnable(true); */
     gui->addVariable("# of Slices", num_slices)->setTooltip("Number of slices. Either specify the number of slices or the interslice distance."); 
-    gui->addVariable("Inter-Slice Distance", dis_slices)->setTooltip("Interslice Distance in um. Either specify the interslice distance or the number of slics.");
+    gui->addVariable("Inter-Slice Distance", dis_slices)->setTooltip("Interslice Distance. Either specify the interslice distance or the number of slics.");
 
 
     gui->addGroup("Output");
@@ -1060,7 +1060,7 @@ void glfw_char_callback(GLFWwindow* window, unsigned int codepoint)
                 cout << " P/p : Show the Slicing Plane " << endl;
                 cout << " Esc : Quit Application " << endl;
                 cout << " W/S/A/D : Move front, back, left & right " << endl;
-                cout << " Mouse_Right_Click : Change Camera Angle " << endl;
+                cout << " Mouse_Right_Click : Allow Camera Movement " << endl;
                 cout << " Mouse_Left_Click : Stop Camera Movement " << endl;
                 cout << " ======================= HELP MENU ===========================" << endl;
             }
