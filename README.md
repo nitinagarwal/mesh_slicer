@@ -1,5 +1,7 @@
 # Mesh Slicer
 
+![](interface.png)
+
 A simple user interface with which one can slice any mesh (with single or multiple components) in arbitarary directions and get either a rasterized image of the resultant contour or a mesh file (PLY) containing the vertices and edges of the contour.  
 
 ## Getting Started
@@ -41,7 +43,7 @@ where:
 
 
 
-## Contact
+### Contact
 
 Mesh Slicer was created by [Nitin Agarwal](http://www.ics.uci.edu/~agarwal/) to help neuroscience researchers to
 generate 2D atlas images by slicing a Virtual 3D Mouse Brain Atlas Model in any arbitarary direction.
