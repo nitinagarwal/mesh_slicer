@@ -52,7 +52,7 @@ To know more about mesh slicer press `H` inside the UI.
 ## License
 
 Feel free to use the code for your own research or project. However keep in mind that this is a research code, thus
-it is NOT clean with wierd variables and inter-dependencies. 
+it is NOT clean and might have unncessary variables and  wierd inter-dependencies. 
 
 
 ## Contact
