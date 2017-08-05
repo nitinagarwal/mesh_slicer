@@ -46,7 +46,7 @@ an example section. After which they can reload the mesh to slice at a different
 5. The output after slicing could either be a [.PLY](http://paulbourke.net/dataformats/ply/) file with vertices of the contour or rasterized section images in bmp format.
 6. If the vertices of the input mesh do not have color, by default they will be assinged an RGB color of [255,0,255]
 
-To know more about mesh slicer press `h`.
+To know more about mesh slicer press `H` inside the UI.
 
 
 ## License
