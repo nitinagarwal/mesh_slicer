@@ -26,9 +26,9 @@
 #include <Eigen/Dense>
 
 
-#include "Shader.h"
-#include "WriteBMP.h"
-#include "Quaternion.h"
+#include "./utils/Shader.h"
+#include "./utils/WriteBMP.h"
+#include "./utils/Quaternion.h"
 using std::cout;
 using std::endl;
 using namespace nanogui;

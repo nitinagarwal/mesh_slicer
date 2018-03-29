@@ -22,6 +22,7 @@ Incomplete
 ```
 git clone https://github.com/nitinagarwal/mesh_slicer.git
 mkdir build
+cd build
 cmake ..
 make
 ```
