@@ -31,7 +31,7 @@ make
 After successful installation, you can import any meshfile with [OFF](http://segeval.cs.princeton.edu/public/off_format.html) format. For example:
 
 ```
-./mesh_slicer mouseBrain.off ./output_directory
+./mesh_slicer ../mouseBrain.off ./output_directory
 ```
 
 where:
