@@ -18,7 +18,7 @@ sudo apt-get install cmake xorg-dev libglu1-mesa-dev python-dev
 
 ### Compiling
 
-Clone the repository and all the dependencies (with git clone --recurse-submodules)
+Clone the repository and all the dependencies
     
 ```
 git clone --recursive-submodules https://github.com/nitinagarwal/mesh_slicer.git
