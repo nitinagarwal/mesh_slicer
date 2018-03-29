@@ -1,6 +1,6 @@
 # Mesh Slicer
 
-![](interface.png)
+![](./misc/interface.png)
 
 A simple user interface with which one can slice any mesh (with single or multiple components) in arbitarary directions and get either a rasterized image of the resultant contour or a mesh file (PLY) containing the vertices and edges of the contour.  
 
@@ -10,27 +10,28 @@ The below instructions will help you install the mesh slicer on your local linux
 
 ### Prerequisites
 
-Incomplete
+On Ubuntu/Debian, make sure you have installed the following packages
 
 ```
-Give examples
+sudo apt-get install cmake xorg-dev libglu1-mesa-dev python-dev
 ```
 
-### Installing
+### Compiling
 
-Incomplete
+Clone the repository and all the dependencies (with git clone --recurse-submodules)
+    
 ```
-git clone https://github.com/nitinagarwal/mesh_slicer.git
+git clone --recursive-submodules https://github.com/nitinagarwal/mesh_slicer.git
 mkdir build
 cd build
 cmake ..
 make
 ```
 
-After successful installation, you can import any meshfile having [OFF](http://segeval.cs.princeton.edu/public/off_format.html) format from the terminal. For example:
+After successful installation, you can import any meshfile with [OFF](http://segeval.cs.princeton.edu/public/off_format.html) format. For example:
 
 ```
-./mesh_slicer mouseBrain.off ./dirs
+./mesh_slicer mouseBrain.off ./output_directory
 ```
 
 where:
