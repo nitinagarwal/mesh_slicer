@@ -13,8 +13,11 @@ The below instructions will help you install the mesh slicer on your local linux
 On Ubuntu/Debian, make sure you have installed the following packages
 
 ```
-sudo apt-get install cmake xorg-dev libglu1-mesa-dev python-dev
+sudo apt-get install cmake xorg-dev libglu1-mesa-dev python-dev libglew-dev
 ```
+
+Also install [libigl](https://github.com/libigl/libigl) and make sure its in your path. Its a header only library used to import/export mesh files
+
 
 ### Compiling
 
