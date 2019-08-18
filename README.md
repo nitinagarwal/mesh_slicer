@@ -1,5 +1,5 @@
 # Mesh Slicer
-
+### Journal of Neuroscience Methods 2018 [[Paper]](https://arxiv.org/abs/1712.09684) [[Project Page]](https://www.ics.uci.edu/~agarwal/mouseBrain/index.html)
 ![](./misc/interface.png)
 
 A simple user interface with which one can slice any mesh (with single or multiple components) in arbitarary directions and get either a rasterized image of the resultant contour or a mesh file (PLY) containing the vertices and edges of the contour.  
